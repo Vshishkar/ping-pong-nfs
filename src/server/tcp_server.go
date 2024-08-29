@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"log"
 	"net"
 	"os"
 )
@@ -13,37 +13,98 @@ const (
 	CONN_TYPE = "tcp"
 )
 
-func main() {
-	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
-	if err != nil {
-		fmt.Println("Error listening:", err.Error())
-		os.Exit(1)
-	}
-	defer l.Close()
-	fmt.Println("Listening on " + CONN_HOST + ":" + CONN_PORT)
+type Server struct {
+	ln       net.Listener
+	quitCh   chan struct{}
+	bitrate  int
+	connType string
+	connHost string
+	connPort string
+	msgCh    chan []byte
+}
 
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
-			os.Exit(1)
-		}
-		go handleRequest(conn)
+type ServerConfig struct {
+	BitRate  int
+	ConnType string
+	ConnHost string
+	ConnPort string
+}
+
+func MakeServer(cfg ServerConfig) *Server {
+	return &Server{
+		quitCh:   make(chan struct{}),
+		msgCh:    make(chan []byte),
+		bitrate:  cfg.BitRate,
+		connType: cfg.ConnType,
+		connHost: cfg.ConnHost,
+		connPort: cfg.ConnPort,
 	}
 }
 
-func handleRequest(conn net.Conn) {
-	buf, read_err := ioutil.ReadAll(conn)
-	if read_err != nil {
-		fmt.Println("failed:", read_err)
-		return
+func (s *Server) Start() error {
+	ln, err := net.Listen(s.connType, s.connHost+":"+s.connPort)
+	if err != nil {
+		fmt.Println("Error listening:", err)
+		os.Exit(1)
 	}
-	fmt.Println("Got: ", string(buf))
 
-	_, write_err := conn.Write([]byte("Message received.\n"))
-	if write_err != nil {
-		fmt.Println("failed:", write_err)
-		return
+	s.ln = ln
+	defer s.ln.Close()
+
+	go s.acceptLoop()
+	go s.handleMsg()
+
+	<-s.quitCh
+	return nil
+}
+
+func (s *Server) acceptLoop() {
+	for {
+		conn, err := s.ln.Accept()
+
+		if err != nil {
+			fmt.Println("Error accepting: ", err.Error())
+		}
+
+		fmt.Println("Accepted conn from ", conn.RemoteAddr())
+
+		go s.handleRequest(conn)
 	}
-	conn.Close()
+}
+
+func (s *Server) handleMsg() {
+	for {
+		select {
+		case msg := <-s.msgCh:
+			fmt.Println(string(msg))
+		}
+	}
+}
+
+func (s *Server) handleRequest(conn net.Conn) {
+	defer conn.Close()
+
+	buf := make([]byte, s.bitrate)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			fmt.Println("failed:", err)
+			return
+		}
+
+		msg := make([]byte, n)
+		copy(msg, buf)
+		s.msgCh <- msg
+	}
+}
+
+func main() {
+	s := MakeServer(ServerConfig{
+		ConnType: CONN_TYPE,
+		BitRate:  1024,
+		ConnHost: CONN_HOST,
+		ConnPort: CONN_PORT,
+	})
+
+	log.Fatal(s.Start())
 }

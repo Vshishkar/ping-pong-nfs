@@ -12,6 +12,35 @@ Information about cluster membership and bytes send will be stored in zookeeper.
 
 TODO:
 
+1. Create TCP File Server
+    - Create a server which listens TCP connection
+    - Add configuration using cla 
+    - Use stream buffer and create simple encoding format
+
+2. Create a simple TCP File Server client to test File server
+ 
+    - Create client and send random file over network to file server
+
+3. Add logging 
+
+    - Add monitoring and logging (need to research opensource solutions)
+
+3. Create Coordinator service
+
+    - Add coordinator service 
+    - Make file servers register themself with coordinator (Add RPC method on Coordinator)
+    - Add Heartbeat PRC on coordinator service to call file servers (Add PRC method on FileServer)
+    - Store coordinator port at root in a txt file
+
+4. Add Chain replication structure.
+    - Add config for chain length
+    - Add RPC at coordinator service to allow File servers to add themself on a chain
+
+
+
+TODO: revisit this list
+
+
 1. Create a Golang server with 2 APIs:
 
     - POST: sendFile(path, byte[])

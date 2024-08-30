@@ -1,16 +1,15 @@
-package main
+package server
 
 import (
+	"bytes"
+	"coordinator"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/rpc"
 	"os"
-)
-
-const (
-	CONN_HOST = "localhost"
-	CONN_PORT = "3333"
-	CONN_TYPE = "tcp"
 )
 
 type Server struct {
@@ -76,35 +75,35 @@ func (s *Server) handleMsg() {
 	for {
 		select {
 		case msg := <-s.msgCh:
-			fmt.Println(string(msg))
+			fmt.Println(msg)
 		}
 	}
+}
+
+func (s *Server) callRegisterToCoordinator() {
+	conn, err := net.Dial("tcp", "localhost:8080")
+	if err != nil {
+		log.Fatal("error ", err)
+	}
+
+	client := rpc.NewClient(conn)
+
+	args := &coordinator.RegisterFileServerArgs{}
+
 }
 
 func (s *Server) handleRequest(conn net.Conn) {
 	defer conn.Close()
 
-	buf := make([]byte, s.bitrate)
-	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			fmt.Println("failed:", err)
-			return
-		}
+	buf := new(bytes.Buffer)
+	var size int64
+	binary.Read(conn, binary.LittleEndian, &size)
 
-		msg := make([]byte, n)
-		copy(msg, buf)
-		s.msgCh <- msg
+	n, err := io.CopyN(buf, conn, size)
+	if err != nil {
+		fmt.Println("failed:", err)
+		return
 	}
-}
-
-func main() {
-	s := MakeServer(ServerConfig{
-		ConnType: CONN_TYPE,
-		BitRate:  1024,
-		ConnHost: CONN_HOST,
-		ConnPort: CONN_PORT,
-	})
-
-	log.Fatal(s.Start())
+	fmt.Printf("read %d bytes", n)
+	s.msgCh <- buf.Bytes()
 }

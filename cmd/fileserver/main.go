@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fileserver/server"
 	"log"
+	"nfs/internal/fileserver"
 	"os"
 )
 
@@ -18,7 +18,7 @@ func main() {
 		port = os.Args[1]
 	}
 
-	s := server.MakeServer(server.ServerConfig{
+	s := fileserver.MakeServer(fileserver.ServerConfig{
 		ConnType: CONN_TYPE,
 		BitRate:  1024,
 		ConnHost: CONN_HOST,

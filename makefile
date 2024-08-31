@@ -18,16 +18,9 @@ run-coordinator: build-coordinator
 
 
 build-server:
-	cd ./src/fileserver
-	go build -o ../../bin/ fileserver
-
-build-client:
-	cd ./src/client
-	go build -o ../../bin/ client
-
+	go build -o ../../bin/ nfs/cmd/fileserver
 
 build-coordinator:
-	cd ./src/coordinator
-	go build -o ../../bin/ coordinator
+	go build -o ../../bin/ nfs/cmd/coordinator
 
 

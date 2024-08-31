@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"bytes"
@@ -14,10 +14,6 @@ const (
 	CONN_PORT = "3333"
 	CONN_TYPE = "tcp"
 )
-
-func main() {
-	SendFile(4000)
-}
 
 func SendFile(size int) error {
 	file := make([]byte, size)

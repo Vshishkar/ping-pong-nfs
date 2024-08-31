@@ -5,12 +5,13 @@ import (
 	"log"
 	"net"
 	"net/rpc"
+	"nfs/internal/coordinator"
 )
 
 func main() {
 	fmt.Println("Hello from coordinator!")
 
-	c := &Coordinator{}
+	c := &coordinator.Coordinator{}
 
 	ln, err := net.Listen("tcp", "localhost:8080")
 	if err != nil {
@@ -19,14 +20,4 @@ func main() {
 
 	rpc.Register(c)
 	rpc.Accept(ln)
-
-	// not sure this is needed
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			fmt.Println("got error while accepting connection", err)
-		}
-
-		fmt.Println("accepted connection from", conn.RemoteAddr())
-	}
 }

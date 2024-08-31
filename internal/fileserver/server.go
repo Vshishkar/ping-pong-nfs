@@ -1,14 +1,14 @@
-package server
+package fileserver
 
 import (
 	"bytes"
-	"coordinator"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/rpc"
+	"nfs/internal/coordinator"
 	"os"
 )
 
@@ -41,6 +41,8 @@ func MakeServer(cfg ServerConfig) *Server {
 }
 
 func (s *Server) Start() error {
+	s.callRegisterToCoordinator()
+
 	ln, err := net.Listen(s.connType, s.connHost+":"+s.connPort)
 	if err != nil {
 		fmt.Println("Error listening:", err)
@@ -87,9 +89,19 @@ func (s *Server) callRegisterToCoordinator() {
 	}
 
 	client := rpc.NewClient(conn)
+	args := &coordinator.RegisterFileServerArgs{
+		Port: s.connPort,
+		Name: "This is server!",
+	}
+	reply := &coordinator.RegisterFileServerReply{}
 
-	args := &coordinator.RegisterFileServerArgs{}
+	err = client.Call("Coordinator.RegisterServer", args, reply)
+	if err != nil {
+		fmt.Println("error after register server", err)
+		return
+	}
 
+	fmt.Println("reply from coordinator", reply.Message)
 }
 
 func (s *Server) handleRequest(conn net.Conn) {

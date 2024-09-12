@@ -8,9 +8,33 @@ Client connects to a random server and tries to embed a new file to a stream.
 
 When client wants to receive a file, they connect to a server and wait until the stream arrived on a server.
 
-Information about cluster membership and bytes send will be stored in zookeeper.
+Information about cluster membership and bytes send will be stored in coordinator service.
 
-TODO:
+## Coordinator server
+
+### Data structures
+
+1. Cluster membership info:
+    - map from server id to: { port, host, lastHb }
+
+2. File info:
+    - which files this system has: map[path] = fileId
+
+3. Chain of file streaming
+
+
+## File server
+
+### Data structures
+
+1. TMP file store map[fileId]= byte[]
+
+### Rpc
+
+Send file back to client
+
+
+## TODO
 
 1. Create TCP File Server
     - Create a server which listens TCP connection
@@ -37,7 +61,6 @@ TODO:
     - Add RPC at coordinator service to allow File servers to add themself on a chain
 
 TODO: revisit this list
-
 
 1. Create a Golang server with 2 APIs:
 

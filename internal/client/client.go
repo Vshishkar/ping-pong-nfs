@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"io"
+	"log/slog"
 	"net"
 )
 
@@ -35,6 +35,6 @@ func SendFile(size int) error {
 		return err
 	}
 
-	fmt.Printf("written %d bytes to network", n)
+	slog.Info("written %d bytes to network", n)
 	return nil
 }

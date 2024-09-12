@@ -3,40 +3,41 @@ package fileserver
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"net/rpc"
-	"nfs/internal/coordinator"
+	"nfs/internal/rpcmodels"
 	"os"
 )
 
 type Server struct {
 	ln       net.Listener
 	quitCh   chan struct{}
-	bitrate  int
 	connType string
 	connHost string
 	connPort string
+	rpcPort  string
 	msgCh    chan []byte
+	id       int
 }
 
 type ServerConfig struct {
-	BitRate  int
 	ConnType string
 	ConnHost string
 	ConnPort string
+	RpcPort  string
 }
 
 func MakeServer(cfg ServerConfig) *Server {
 	return &Server{
 		quitCh:   make(chan struct{}),
 		msgCh:    make(chan []byte),
-		bitrate:  cfg.BitRate,
 		connType: cfg.ConnType,
 		connHost: cfg.ConnHost,
 		connPort: cfg.ConnPort,
+		rpcPort:  cfg.RpcPort,
 	}
 }
 
@@ -45,7 +46,7 @@ func (s *Server) Start() error {
 
 	ln, err := net.Listen(s.connType, s.connHost+":"+s.connPort)
 	if err != nil {
-		fmt.Println("Error listening:", err)
+		slog.Info("Error listening:", "err", err)
 		os.Exit(1)
 	}
 
@@ -53,6 +54,7 @@ func (s *Server) Start() error {
 	defer s.ln.Close()
 
 	go s.acceptLoop()
+	go s.acceptRPCs()
 	go s.handleMsg()
 
 	<-s.quitCh
@@ -64,20 +66,37 @@ func (s *Server) acceptLoop() {
 		conn, err := s.ln.Accept()
 
 		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
+			slog.Info("Error accepting", "err", err)
 		}
 
-		fmt.Println("Accepted conn from ", conn.RemoteAddr())
+		slog.Info("Accepted conn from", "addr", conn.RemoteAddr())
 
 		go s.handleRequest(conn)
 	}
+}
+
+func (s *Server) acceptRPCs() {
+	slog.Info("making server accept rpcs", "id", s.id)
+	ln, err := net.Listen(s.connType, s.connHost+":"+s.rpcPort)
+	if err != nil {
+		slog.Error("failed to connect to", "port", s.rpcPort, "err", err)
+		return
+	}
+
+	err = rpc.Register(s)
+	if err != nil {
+		slog.Error("Error registering server", "err", err)
+	}
+
+	slog.Info("registered server", "id", s.id)
+	rpc.Accept(ln)
 }
 
 func (s *Server) handleMsg() {
 	for {
 		select {
 		case msg := <-s.msgCh:
-			fmt.Println(msg)
+			slog.Info(string(msg))
 		}
 	}
 }
@@ -89,19 +108,21 @@ func (s *Server) callRegisterToCoordinator() {
 	}
 
 	client := rpc.NewClient(conn)
-	args := &coordinator.RegisterFileServerArgs{
-		Port: s.connPort,
-		Name: "This is server!",
+	args := &rpcmodels.RegisterFileServerArgs{
+		Port:    s.connPort,
+		Host:    s.connHost,
+		RpcPort: s.rpcPort,
 	}
-	reply := &coordinator.RegisterFileServerReply{}
+	reply := &rpcmodels.RegisterFileServerReply{}
 
 	err = client.Call("Coordinator.RegisterServer", args, reply)
 	if err != nil {
-		fmt.Println("error after register server", err)
+		slog.Info("error after register server", "err", err)
 		return
 	}
 
-	fmt.Println("reply from coordinator", reply.Message)
+	slog.Info("reply from coordinator", "reply", reply.Id)
+	s.id = reply.Id
 }
 
 func (s *Server) handleRequest(conn net.Conn) {
@@ -113,9 +134,9 @@ func (s *Server) handleRequest(conn net.Conn) {
 
 	n, err := io.CopyN(buf, conn, size)
 	if err != nil {
-		fmt.Println("failed:", err)
+		slog.Error("failed:", "err", err)
 		return
 	}
-	fmt.Printf("read %d bytes", n)
+	slog.Info("read %d bytes", "n", n)
 	s.msgCh <- buf.Bytes()
 }

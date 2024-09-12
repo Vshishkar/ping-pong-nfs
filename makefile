@@ -2,11 +2,11 @@
 
 run-server1: build-server
 	cd ./bin
-	./fileserver 3333
+	./fileserver 3333 3335
 
 run-server2: build-server
 	cd ./bin
-	./fileserver 3334
+	./fileserver 3334 3336
 
 run-client: build-client
 	cd ./bin
@@ -18,9 +18,10 @@ run-coordinator: build-coordinator
 
 
 build-server:
-	go build -o ../../bin/ nfs/cmd/fileserver
+	rm -rf ./bin/fileserver
+	go build -o ./bin/ nfs/cmd/fileserver
 
 build-coordinator:
-	go build -o ../../bin/ nfs/cmd/coordinator
+	go build -o ./bin/ nfs/cmd/coordinator
 
 

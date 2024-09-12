@@ -1,23 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net"
-	"net/rpc"
+	"log/slog"
 	"nfs/internal/coordinator"
 )
 
 func main() {
-	fmt.Println("Hello from coordinator!")
+	slog.Info("Hello from coordinator! This is coord")
 
-	c := &coordinator.Coordinator{}
-
-	ln, err := net.Listen("tcp", "localhost:8080")
-	if err != nil {
-		log.Fatal("failed to connect to 8080", err)
-	}
-
-	rpc.Register(c)
-	rpc.Accept(ln)
+	c := coordinator.MakeCoordinator()
+	log.Fatal(c.Start())
 }
